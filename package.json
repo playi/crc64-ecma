@@ -1,13 +1,13 @@
 {
   "name": "crc64-ecma",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Calculate CRC64-ECMA182 (reversed polynomial) hashes for NodeJS.",
   "license": "GPL-2.0",
-  "author": "AkiVer",
-  "homepage": "https://github.com/akiver/crc64-ecma",
+  "author": "play-i",
+  "homepage": "https://github.com/playi/crc64-ecma",
   "repository": {
     "type": "git",
-    "url": "https://github.com/akiver/crc64-ecma.git"
+    "url": "https://github.com/playi/crc64-ecma.git"
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,10 +23,10 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "format": "prettier --write \"**\"",
-    "t": "yarn test",
+    "t": "jest",
     "test": "jest",
     "tsc": "tsc --noEmit",
-    "tw": "yarn test --watch"
+    "tw": "jest --watch"
   },
   "devDependencies": {
     "@types/jest": "26.0.23",
