@@ -1,22 +1,28 @@
+const JSBI = require('jsbi');
+
+const one = JSBI.BigInt(1);
+const FF = JSBI.BigInt(0xff);
+
 function generateTable() {
   // https://en.wikipedia.org/wiki/Cyclic_redundancy_check
-  const POLY = 0xc96c5795d7870f42n;
-  const table: bigint[][] = [];
+  const POLY = JSBI.BigInt('0xc96c5795d7870f42');
+  const table: (typeof JSBI)[][] = [];
 
   for (let i = 0; i < 8; i++) {
     table[i] = [];
   }
 
-  let crc = 0n;
+  let crc = JSBI.BigInt(0);
 
   for (let i = 0; i < 256; i++) {
-    crc = BigInt(i);
+    crc = JSBI.BigInt(i);
 
     for (let j = 0; j < 8; j++) {
-      if (crc & 1n) {
-        crc = POLY ^ (crc >> 1n);
+      const rightshift = JSBI.signedRightShift(crc, one);
+      if (JSBI.toNumber(JSBI.bitwiseAnd(crc, one))) {
+        crc = JSBI.bitwiseXor(POLY, rightshift)
       } else {
-        crc = crc >> 1n;
+        crc = rightshift;
       }
     }
 
@@ -27,8 +33,8 @@ function generateTable() {
     crc = table[0][i];
 
     for (let j = 1; j < 8; j++) {
-      const index = Number(crc & 0xffn);
-      crc = table[0][index] ^ (crc >> 8n);
+      const index = JSBI.toNumber(JSBI.bitwiseAnd(crc, FF));
+      crc = JSBI.bitwiseXor(table[0][index], JSBI.signedRightShift(crc, JSBI.BigInt(8)));
       table[j][i] = crc;
     }
   }
@@ -55,39 +61,71 @@ const TABLE = generateTable();
 export function crc64(string: string) {
   const utf8String = stringToUtf8(string);
   let bytes = stringToBytes(utf8String);
-  let crc = ~BigInt(0) & 0xffffffffffffffffn;
+  let crc = JSBI.bitwiseAnd(
+      JSBI.bitwiseNot(JSBI.BigInt(0)),
+      JSBI.BigInt('0xffffffffffffffff')
+  );
 
   while (bytes.length > 8) {
-    crc ^=
-      BigInt(bytes[0]) |
-      (BigInt(bytes[1]) << 8n) |
-      (BigInt(bytes[2]) << 16n) |
-      (BigInt(bytes[3]) << 24n) |
-      (BigInt(bytes[4]) << 32n) |
-      (BigInt(bytes[5]) << 40n) |
-      (BigInt(bytes[6]) << 48n) |
-      (BigInt(bytes[7]) << 56n);
-
+    const op1 = 
+      JSBI.bitwiseOr(JSBI.BigInt(bytes[0]),
+        JSBI.bitwiseOr(
+          JSBI.leftShift(JSBI.BigInt(bytes[1]), JSBI.BigInt(8)),
+          JSBI.bitwiseOr(
+            JSBI.leftShift(JSBI.BigInt(bytes[2]), JSBI.BigInt(16)),
+            JSBI.bitwiseOr(
+              JSBI.leftShift(JSBI.BigInt(bytes[3]), JSBI.BigInt(24)),
+              JSBI.bitwiseOr(
+                JSBI.leftShift(JSBI.BigInt(bytes[4]), JSBI.BigInt(32)),
+                JSBI.bitwiseOr(
+                  JSBI.leftShift(JSBI.BigInt(bytes[5]), JSBI.BigInt(40)),
+                  JSBI.bitwiseOr(
+                    JSBI.leftShift(JSBI.BigInt(bytes[6]), JSBI.BigInt(48)),
+                    JSBI.leftShift(JSBI.BigInt(bytes[7]), JSBI.BigInt(56))
+                  )
+                )
+              )
+            )
+          )
+        )
+      );
+    crc = JSBI.bitwiseXor(crc, op1);
     crc =
-      TABLE[7][Number(crc & 0xffn)] ^
-      TABLE[6][Number((crc >> 8n) & 0xffn)] ^
-      TABLE[5][Number((crc >> 16n) & 0xffn)] ^
-      TABLE[4][Number((crc >> 24n) & 0xffn)] ^
-      TABLE[3][Number((crc >> 32n) & 0xffn)] ^
-      TABLE[2][Number((crc >> 40n) & 0xffn)] ^
-      TABLE[1][Number((crc >> 48n) & 0xffn)] ^
-      TABLE[0][Number(crc >> 56n)];
-
+      JSBI.bitwiseXor(
+        TABLE[7][JSBI.toNumber(JSBI.bitwiseAnd(crc, FF))],
+        JSBI.bitwiseXor(
+          TABLE[6][JSBI.toNumber(JSBI.bitwiseAnd(JSBI.signedRightShift(crc, JSBI.BigInt(8)), FF))],
+          JSBI.bitwiseXor(
+            TABLE[5][JSBI.toNumber(JSBI.bitwiseAnd(JSBI.signedRightShift(crc, JSBI.BigInt(16)), FF))],
+            JSBI.bitwiseXor(
+              TABLE[4][JSBI.toNumber(JSBI.bitwiseAnd(JSBI.signedRightShift(crc, JSBI.BigInt(24)), FF))],
+              JSBI.bitwiseXor(
+                TABLE[3][JSBI.toNumber(JSBI.bitwiseAnd(JSBI.signedRightShift(crc, JSBI.BigInt(32)), FF))],
+                JSBI.bitwiseXor(
+                  TABLE[2][JSBI.toNumber(JSBI.bitwiseAnd(JSBI.signedRightShift(crc, JSBI.BigInt(40)), FF))],
+                  JSBI.bitwiseXor(
+                    TABLE[1][JSBI.toNumber(JSBI.bitwiseAnd(JSBI.signedRightShift(crc, JSBI.BigInt(48)), FF))],
+                    TABLE[0][JSBI.toNumber(JSBI.signedRightShift(crc, JSBI.BigInt(56)))]
+                  )
+                )
+              )
+            )
+          )
+        )
+      );
     bytes = bytes.slice(8);
   }
 
   for (let i = 0; i < bytes.length; i++) {
-    const lower = Number(crc & 0xffn);
+    const lower = JSBI.toNumber(JSBI.bitwiseAnd(crc, FF));
     const index = lower ^ bytes[i];
-    crc = TABLE[0][index] ^ (crc >> 8n);
+    crc = JSBI.bitwiseXor(TABLE[0][index], JSBI.signedRightShift(crc, JSBI.BigInt(8)));
   }
 
-  crc = ~crc & 0xffffffffffffffffn;
+  crc = JSBI.bitwiseAnd(
+      JSBI.bitwiseNot(crc),
+      JSBI.BigInt('0xffffffffffffffff')
+  );
 
   return crc;
 }
