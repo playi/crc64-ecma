@@ -24,6 +24,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "format": "prettier --write \"**\"",
+    "prepare": "npm run build",
     "t": "jest",
     "test": "jest",
     "tsc": "tsc --noEmit",
